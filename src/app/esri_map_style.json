@@ -1,0 +1,22 @@
+{
+  "version": 8,
+  "sources": {
+    "esri-world-street-map": {
+      "type": "raster",
+      "tiles": [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+      ],
+      "tileSize": 256,
+      "attribution": "Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012"
+    }
+  },
+  "layers": [
+    {
+      "id": "esri-world-street-map-layer",
+      "type": "raster",
+      "source": "esri-world-street-map",
+      "minzoom": 0,
+      "maxzoom": 22
+    }
+  ]
+}

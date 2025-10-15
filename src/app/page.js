@@ -1,95 +1,145 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
 
-export default function Home() {
+import React, { useState, useEffect, useMemo } from 'react';
+import { Box, CircularProgress, ThemeProvider, createTheme } from '@mui/material';
+import dynamic from 'next/dynamic';
+
+import { useOceanData } from '../hooks/useOceanData';
+import { VARIABLES_CONFIG } from '../utils/mapUtils'; 
+
+import LayerSelector from '../components/LayerSelector';
+import DepthSlider from '../components/DepthSlider';
+import TimeSlider from '../components/TimeSlider';
+import ColourLegend from '../components/ColourLegend';
+import InfoBox from '../components/InfoBox';
+import Header from '../components/Header';
+
+const MapView = dynamic(() => import('../components/MapView'), {
+  ssr: false,
+  loading: () => (
+    <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#111827' }}>
+      <CircularProgress />
+    </Box>
+  )
+});
+
+const darkTheme = createTheme({
+  palette: { mode: 'dark', primary: { main: '#90caf9' }, background: { paper: 'rgba(30, 41, 59, 0.9)' } },
+});
+
+export default function HomePage() {
+  const {
+    metadata,
+    pointsData,
+    gridData,
+    selectedVariable,
+    setSelectedVariable,
+    timeIndex,
+    setTimeIndex,
+    depthIndex,
+    setDepthIndex,
+    loading,
+    error,
+    isPlaying,
+    setIsPlaying,
+    clickInfo,
+    setClickInfo
+  } = useOceanData();
+  
+  const [viewState, setViewState] = useState(null);
+  
+  useEffect(() => {
+    if (metadata && metadata.bounds) {
+      setViewState({
+        longitude: (metadata.bounds[0] + metadata.bounds[2]) / 2,
+        latitude: (metadata.bounds[1] + metadata.bounds[3]) / 2,
+        zoom: 6,
+        pitch: 0,
+        bearing: 0,
+        transitionDuration: 800
+      });
+    }
+  }, [metadata]);
+
+  // This hook correctly derives the complete configuration for the selected variable and depth
+  const currentVarDepthConfig = useMemo(() => {
+    if (!metadata || !selectedVariable) {
+      return null;
+    }
+
+    const staticConfig = VARIABLES_CONFIG[selectedVariable];
+    if (!staticConfig) return null;
+    
+    const currentDepth = metadata.depth_levels[depthIndex];
+    if (currentDepth === undefined) return null;
+
+    // Format the depth number to a string with one decimal place to match the JSON key
+    const depthKey = currentDepth.toFixed(1);
+
+    if (selectedVariable === 'currents') {
+      const uMeta = metadata.variables.u;
+      const vMeta = metadata.variables.v;
+      if (!uMeta?.depth_stats || !vMeta?.depth_stats) return null;
+      
+      const uStats = uMeta.depth_stats[depthKey];
+      const vStats = vMeta.depth_stats[depthKey];
+      if (!uStats || !vStats) return null;
+
+      const vmax = Math.max(
+        Math.abs(uStats.vmax), Math.abs(uStats.vmin),
+        Math.abs(vStats.vmax), Math.abs(vStats.vmin)
+      );
+
+      return { ...staticConfig, vmin: 0, vmax: vmax };
+    }
+    
+    const variableMeta = metadata.variables[selectedVariable];
+    if (!variableMeta?.depth_stats) {
+       return { ...staticConfig, ...variableMeta };
+    }
+
+    const dynamicStats = variableMeta.depth_stats[depthKey];
+    if (!dynamicStats) return null;
+
+    return { ...staticConfig, ...dynamicStats };
+  }, [metadata, selectedVariable, depthIndex]);
+  
+  if (loading.initial) {
+    return <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: '#111827', color: 'white' }}>Loading initial data...</Box>;
+  }
+  if (error) {
+    return <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: 'darkred', color: 'white', p: 4 }}>{error}</Box>;
+  }
+  if (!metadata) {
+    return <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: '#111827', color: 'white' }}>Failed to load metadata. Please check the API connection and refresh.</Box>;
+  }
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.js</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <ThemeProvider theme={darkTheme}>
+      <Header />
+      <Box sx={{ height: '100vh', width: '100vw', position: 'relative' }}>
+        {/* Render MapView only when viewState is initialized */}
+        {viewState && <MapView          
+          pointsData={pointsData}
+          gridData={gridData}
+          currentVarDepthConfig={currentVarDepthConfig}
+          metadata={metadata}
+          selectedVariable={selectedVariable}
+          timeIndex={timeIndex}
+          depthIndex={depthIndex}
+          setClickInfo={setClickInfo}
+          viewState={viewState}
+          setViewState={setViewState}
+        />}
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        {loading.data && <CircularProgress sx={{ position: 'absolute', top: '50%', left: '50%', zIndex: 10 }} />}
+
+        <LayerSelector metadata={metadata} selectedVariable={selectedVariable} setSelectedVariable={setSelectedVariable} />
+        <DepthSlider metadata={metadata} depthIndex={depthIndex} setDepthIndex={setDepthIndex} />
+        <TimeSlider metadata={metadata} timeIndex={timeIndex} setTimeIndex={setTimeIndex} isPlaying={isPlaying} setIsPlaying={setIsPlaying} />
+        <ColourLegend variableConfig={currentVarDepthConfig} selectedVariable={selectedVariable} />
+        {clickInfo && <InfoBox clickInfo={clickInfo} onClose={() => setClickInfo(null)} variables={metadata.variables} />}
+      </Box>
+    </ThemeProvider>
   );
 }
