@@ -1,16 +1,16 @@
-// src/components/MapView.js
 'use client';
 
 import React from 'react';
 import { useMemo } from 'react';
 import { DeckGL } from '@deck.gl/react';
 import { ContourLayer } from '@deck.gl/aggregation-layers';
-import { ScatterplotLayer, IconLayer } from '@deck.gl/layers';
+import { ScatterplotLayer, IconLayer, GeoJsonLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl/maplibre';
 import esriMapStyle from '../app/esri_map_style.json';
 import { MATPLOTLIB_COLORMAPS, generateContours, getColorFromColormap } from '../utils/mapUtils';
+import {MaskExtension} from '@deck.gl/extensions';
+import landPolygon from '../app/sa_province_outline.json';
 
-// URLs for the icon assets
 const ICON_ATLAS = 'arrow.svg';
 const ICON_MAPPING = 'icon-mapping.json';
 
@@ -45,11 +45,9 @@ export default function MapView({
     const visibleLayers = [];
 
     if (selectedVariable === 'currents') {
-      
-      // Get the colormap and define the color scale for the magnitude
       const colors = MATPLOTLIB_COLORMAPS[currentVarDepthConfig.colormap];
-      const vminMag = 0; // Magnitude starts at 0
-      const vmaxMag = currentVarDepthConfig.vmax; // Use the max velocity component as the top of our scale
+      const vminMag = 0;
+      const vmaxMag = currentVarDepthConfig.vmax;
 
       const arrowLayer = new IconLayer({
         id: `arrow-layer-${timeIndex}-${depthIndex}`,
@@ -64,22 +62,18 @@ export default function MapView({
           const magnitude = Math.sqrt(u * u + v * v);
           return 1000 + magnitude * 5000;
         },
-        
-        // --- MODIFIED: Set color based on magnitude ---
         getColor: d => {
           const u = d.properties.u;
           const v = d.properties.v;
           const magnitude = Math.sqrt(u * u + v * v);
           return getColorFromColormap(magnitude, vminMag, vmaxMag, colors);
         },
-
         getAngle: d => {
           const u = d.properties.u;
           const v = d.properties.v;
           const angle = -(Math.atan2(u, v) * (180 / Math.PI));
           return angle;
         },
-
         pickable: true,
         autoHighlight: true,
         highlightColor: [255, 255, 0, 255],
@@ -88,21 +82,27 @@ export default function MapView({
         sizeMinPixels: 2,
         sizeMaxPixels: 50,
       });
+            
       visibleLayers.push(arrowLayer);
 
-    } else {
-      // Contour and Scatterplot layers remain unchanged
+    } else {      
+      const landMaskingLayer = new GeoJsonLayer({
+        id: 'land-mask-layer',
+        data: landPolygon,
+        operation: 'mask',
+      });
+
       const scatterplotLayer = new ScatterplotLayer({
         id: `scatterplot-layer-${timeIndex}-${depthIndex}`,
         data: pointsData,
         getPosition: d => d.position,
         getFillColor: d => [200, 200, 200, 150],
-        getRadius: 500,
+        getRadius: 300,
         radiusMinPixels: 0,
-        radiusMaxPixels: 5,
+        radiusMaxPixels: 3,
         pickable: true,
         autoHighlight: true,
-        highlightColor: [255, 255, 0, 255],
+        highlightColor: [255, 255, 0, 200],
         onClick: info => info.object ? setClickInfo(info) : setClickInfo(null),
       });
 
@@ -118,10 +118,14 @@ export default function MapView({
         getPosition: d => d.position,
         getWeight: d => d.properties[selectedVariable],
         pickable: false,
-        aggregation: 'MIN'
+        aggregation: 'MIN',
+        maskId: 'land-mask-layer',        
+        maskInverted: true,
+        extensions: [new MaskExtension()]
       });
-
-      visibleLayers.push(contourLayer);
+  
+      visibleLayers.push(landMaskingLayer);
+      visibleLayers.push(contourLayer);      
       visibleLayers.push(scatterplotLayer);
     }
 

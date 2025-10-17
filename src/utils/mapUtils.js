@@ -8,17 +8,29 @@ export const VARIABLES_CONFIG = {
     zeta: { name: "Sea Surface Height", colormap: "coolwarm" },
 };
 
-// ... keep the rest of the file exactly as it was
 export const MATPLOTLIB_COLORMAPS = {
-    plasma: ['#0d0887', '#6a00a8', '#b12a90', '#e16462', '#fca636', '#f0f921'],
-    viridis: ['#440154', '#414487', '#2a788e', '#22a884', '#7ad151', '#fde725'],
-    seismic: ['#000080', '#0000ff', '#6699ff', '#ff0000', '#800000'],
-    coolwarm: ['#3b4cc0', '#6699ff', '#ec8faeff', '#f38383ff', '#b40426'],
+    plasma: [
+        '#0d0887', '#46039f', '#7201a8', '#9c179e', '#bd3786',
+        '#d8576b', '#ed7953', '#fb9f3a', '#fdca26', '#f0f921'
+    ],
+    viridis: [
+        '#440154', '#482878', '#3e4989', '#31688e', '#26828e',
+        '#1f9e89', '#35b779', '#6dcd59', '#b4de2c', '#fde725'
+    ],
+    seismic: [
+        '#000033', '#000066', '#000099', '#0000cc', '#0000ff',
+        '#3333ff', '#6666ff', '#9999ff', '#ccccff', '#ffffff',
+        '#ffcccc', '#ff9999', '#ff6666', '#ff3333', '#ff0000',
+        '#cc0000', '#990000', '#660000', '#330000'
+    ],
+    coolwarm: [
+        '#3b4cc0', '#5868c7', '#7385cf', '#8ea1d6', '#a8bddd',
+        '#c1d9e4', '#dae2e8', '#f2f2f2', '#f4dcdb', '#f5c5c5',
+        '#f7afaf', '#f89898', '#f98282', '#ba2f38', '#b40426'
+    ],
 };
 
-// Shared function to generate contour data for Deck.gl
 export function generateContours(vmin, vmax, colors) {
-    // ... (no changes here)
     if (typeof vmin !== 'number' || typeof vmax !== 'number' || !Array.isArray(colors)) {
         return [];
     }
@@ -26,7 +38,7 @@ export function generateContours(vmin, vmax, colors) {
     const thresholds = [];
     const numSegments = colors.length;
     const step = (vmax - vmin) / numSegments;
-    const BIG_NUMBER = 100; // Represents open-ended thresholds at the extremes
+    const BIG_NUMBER = 100;
 
     for (let i = 0; i < numSegments; i++) {
         const lowerBound = i === 0 ? -BIG_NUMBER : vmin + i * step;
@@ -42,7 +54,6 @@ export function generateContours(vmin, vmax, colors) {
 }
 
 function hexToRgb(hex) {
-    // ... (no changes here)
     if (!hex || hex.length < 7) return [255, 255, 255];
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
@@ -50,11 +61,9 @@ function hexToRgb(hex) {
     return [r, g, b];
 }
 
-// Linearly interpolates a color from a colormap array based on a value
 export function getColorFromColormap(value, vmin, vmax, colors) {
-    // ... (no changes here)
     if (!colors || colors.length === 0) {
-        return [255, 255, 255, 128]; // Default color if colormap is missing
+        return [255, 255, 255, 128];
     }
 
     const normalized = (value - vmin) / (vmax - vmin);
