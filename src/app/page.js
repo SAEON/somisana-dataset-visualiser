@@ -60,8 +60,7 @@ export default function HomePage() {
       });
     }
   }, [metadata]);
-
-  // This hook correctly derives the complete configuration for the selected variable and depth
+  
   const currentVarDepthConfig = useMemo(() => {
     if (!metadata || !selectedVariable) {
       return null;
@@ -72,8 +71,7 @@ export default function HomePage() {
     
     const currentDepth = metadata.depth_levels[depthIndex];
     if (currentDepth === undefined) return null;
-
-    // Format the depth number to a string with one decimal place to match the JSON key
+    
     const depthKey = currentDepth.toFixed(1);
 
     if (selectedVariable === 'currents') {
@@ -118,7 +116,6 @@ export default function HomePage() {
     <ThemeProvider theme={darkTheme}>
       <Header />
       <Box sx={{ height: '100vh', width: '100vw', position: 'relative' }}>
-        {/* Render MapView only when viewState is initialized */}
         {viewState && <MapView          
           pointsData={pointsData}
           gridData={gridData}

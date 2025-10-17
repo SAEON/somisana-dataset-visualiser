@@ -1,4 +1,3 @@
-// ADD THIS NEW CONFIGURATION OBJECT AT THE TOP
 export const VARIABLES_CONFIG = {
     temp: { name: "Temperature", colormap: "plasma" },
     salt: { name: "Salinity", colormap: "viridis" },
