@@ -90,7 +90,7 @@ export default function HomePage() {
         Math.abs(vStats.vmax), Math.abs(vStats.vmin)
       );
 
-      return { ...staticConfig, vmin: 0, vmax: vmax };
+      return { ...staticConfig, vmin: 0, vmax: vmax, units: 'm/s' };
     }
     
     const variableMeta = metadata.variables[selectedVariable];
@@ -101,7 +101,7 @@ export default function HomePage() {
     const dynamicStats = variableMeta.depth_stats[depthKey];
     if (!dynamicStats) return null;
 
-    return { ...staticConfig, ...dynamicStats };
+    return { ...staticConfig, units: variableMeta['units'], ...dynamicStats };
   }, [metadata, selectedVariable, depthIndex]);
   
   if (loading.initial) {
