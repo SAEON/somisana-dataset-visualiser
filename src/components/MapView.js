@@ -79,8 +79,8 @@ export default function MapView({
         highlightColor: [255, 255, 0, 255],
         onClick: info => info.object ? setClickInfo(info) : setClickInfo(null),
         sizeUnits: 'meters',
-        sizeMinPixels: 2,
-        sizeMaxPixels: 50,
+        // sizeMinPixels: 2,
+        // sizeMaxPixels: 50,
       });
             
       visibleLayers.push(arrowLayer);

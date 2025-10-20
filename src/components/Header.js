@@ -1,4 +1,4 @@
-import Box from "@mui/material/Box";
+import {Box, LinearProgress} from "@mui/material";
 import Image from "next/image";
 import Typography from "@mui/material/Typography";
 import React from "react";
@@ -7,9 +7,6 @@ export default function Header() {
     return (
         <Box
             sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
                 width: '100%',
                 zIndex: 1,
                 p: 2,
@@ -35,7 +32,7 @@ export default function Header() {
             />
             <Typography variant="h4" component="h1" sx={{color: '#e2e8f0'}}>
                 Ocean Data Viewer
-            </Typography>
+            </Typography>            
         </Box>
     )
 }

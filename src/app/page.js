@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Box, CircularProgress, ThemeProvider, createTheme } from '@mui/material';
+import { Box, LinearProgress, ThemeProvider, createTheme } from '@mui/material';
 import dynamic from 'next/dynamic';
 
 import { useOceanData } from '../hooks/useOceanData';
-import { VARIABLES_CONFIG } from '../utils/mapUtils'; 
+import { VARIABLES_CONFIG } from '../utils/mapUtils';
 
 import LayerSelector from '../components/LayerSelector';
 import DepthSlider from '../components/DepthSlider';
@@ -16,11 +16,6 @@ import Header from '../components/Header';
 
 const MapView = dynamic(() => import('../components/MapView'), {
   ssr: false,
-  loading: () => (
-    <Box sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#111827' }}>
-      <CircularProgress />
-    </Box>
-  )
 });
 
 const darkTheme = createTheme({
@@ -45,9 +40,9 @@ export default function HomePage() {
     clickInfo,
     setClickInfo
   } = useOceanData();
-  
+
   const [viewState, setViewState] = useState(null);
-  
+
   useEffect(() => {
     if (metadata && metadata.bounds) {
       setViewState({
@@ -60,7 +55,7 @@ export default function HomePage() {
       });
     }
   }, [metadata]);
-  
+
   const currentVarDepthConfig = useMemo(() => {
     if (!metadata || !selectedVariable) {
       return null;
@@ -68,17 +63,17 @@ export default function HomePage() {
 
     const staticConfig = VARIABLES_CONFIG[selectedVariable];
     if (!staticConfig) return null;
-    
+
     const currentDepth = metadata.depth_levels[depthIndex];
     if (currentDepth === undefined) return null;
-    
+
     const depthKey = currentDepth.toFixed(1);
 
     if (selectedVariable === 'currents') {
       const uMeta = metadata.variables.u;
       const vMeta = metadata.variables.v;
       if (!uMeta?.depth_stats || !vMeta?.depth_stats) return null;
-      
+
       const uStats = uMeta.depth_stats[depthKey];
       const vStats = vMeta.depth_stats[depthKey];
       if (!uStats || !vStats) return null;
@@ -90,10 +85,10 @@ export default function HomePage() {
 
       return { ...staticConfig, vmin: 0, vmax: vmax, units: 'm/s' };
     }
-    
+
     const variableMeta = metadata.variables[selectedVariable];
     if (!variableMeta?.depth_stats) {
-       return { ...staticConfig, ...variableMeta };
+      return { ...staticConfig, ...variableMeta };
     }
 
     const dynamicStats = variableMeta.depth_stats[depthKey];
@@ -101,7 +96,7 @@ export default function HomePage() {
 
     return { ...staticConfig, units: variableMeta['units'], ...dynamicStats };
   }, [metadata, selectedVariable, depthIndex]);
-  
+
   if (loading.initial) {
     return <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: '#111827', color: 'white' }}>Loading initial data...</Box>;
   }
@@ -113,10 +108,13 @@ export default function HomePage() {
   }
 
   return (
-    <ThemeProvider theme={darkTheme}>
-      <Header />
+    <ThemeProvider theme={darkTheme}>      
+      <Box sx={{ position: 'fixed', top: 0, zIndex: 1500, width: '100vw' }}>
+        <Header />
+        {(loading.data || !viewState) && <LinearProgress />}
+      </Box>      
       <Box sx={{ height: '100vh', width: '100vw', position: 'relative' }}>
-        {viewState && <MapView          
+        {viewState && <MapView
           pointsData={pointsData}
           gridData={gridData}
           currentVarDepthConfig={currentVarDepthConfig}
@@ -128,9 +126,6 @@ export default function HomePage() {
           viewState={viewState}
           setViewState={setViewState}
         />}
-
-        {loading.data && <CircularProgress sx={{ position: 'absolute', top: '50%', left: '50%', zIndex: 10 }} />}
-
         <LayerSelector metadata={metadata} selectedVariable={selectedVariable} setSelectedVariable={setSelectedVariable} />
         <DepthSlider metadata={metadata} depthIndex={depthIndex} setDepthIndex={setDepthIndex} />
         <TimeSlider metadata={metadata} timeIndex={timeIndex} setTimeIndex={setTimeIndex} isPlaying={isPlaying} setIsPlaying={setIsPlaying} />
