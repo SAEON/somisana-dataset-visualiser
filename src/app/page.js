@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Box, LinearProgress, ThemeProvider, createTheme } from '@mui/material';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import { Box, LinearProgress, ThemeProvider, createTheme, Typography } from '@mui/material';
 import dynamic from 'next/dynamic';
 
 import { useOceanData } from '../hooks/useOceanData';
@@ -22,7 +22,7 @@ const darkTheme = createTheme({
   palette: { mode: 'dark', primary: { main: '#90caf9' }, background: { paper: 'rgba(30, 41, 59, 0.9)' } },
 });
 
-export default function HomePage() {
+function Dashboard() {
   const {
     metadata,
     pointsData,
@@ -108,11 +108,11 @@ export default function HomePage() {
   }
 
   return (
-    <ThemeProvider theme={darkTheme}>      
+    <ThemeProvider theme={darkTheme}>
       <Box sx={{ position: 'fixed', top: 0, zIndex: 1500, width: '100vw' }}>
         <Header />
         {(loading.data || !viewState) && <LinearProgress />}
-      </Box>      
+      </Box>
       <Box sx={{ height: '100vh', width: '100vw', position: 'relative' }}>
         {viewState && <MapView
           pointsData={pointsData}
@@ -133,5 +133,18 @@ export default function HomePage() {
         {clickInfo && <InfoBox clickInfo={clickInfo} onClose={() => setClickInfo(null)} variables={metadata.variables} />}
       </Box>
     </ThemeProvider>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: '#111827', color: 'white' }}>
+        <LinearProgress sx={{ width: '200px', mb: 2 }} />
+        <Typography>Loading Dashboard...</Typography>
+      </Box>
+    }>
+      <Dashboard />
+    </Suspense>
   );
 }
