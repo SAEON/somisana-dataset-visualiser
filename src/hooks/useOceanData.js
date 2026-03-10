@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-const API_BASE_URL = 'http://127.0.0.1:8000/ocean_dataset';
+import { API_BASE_URL } from '../config';
 
-export function useOceanData() {  
+
+export function useOceanData() {
   const [metadata, setMetadata] = useState(null);
   const [pointsData, setPointsData] = useState(null);
   const [selectedVariable, setSelectedVariable] = useState('');
@@ -18,8 +19,8 @@ export function useOceanData() {
 
   const searchParams = useSearchParams();
   const datasetId = searchParams.get('dataset_id');
-  
-  useEffect(() => {    
+
+  useEffect(() => {
     if (!datasetId) {
       setLoading({ initial: false, data: false });
       setError("No dataset specified. Please add '?dataset_id=<name>' to the URL.");
@@ -27,7 +28,7 @@ export function useOceanData() {
       return;
     }
 
-    const fetchInitialData = async () => {      
+    const fetchInitialData = async () => {
       setMetadata(null);
       setPointsData(null);
       setTimeIndex(0);
@@ -35,7 +36,7 @@ export function useOceanData() {
       setError(null);
       setLoading({ initial: true, data: false });
 
-      try {        
+      try {
         const response = await fetch(`${API_BASE_URL}/metadata/${datasetId}`);
         if (!response.ok) {
           if (response.status === 404) {
@@ -45,7 +46,7 @@ export function useOceanData() {
         }
         const data = await response.json();
         setMetadata(data);
-        if (data && data.variables) {          
+        if (data && data.variables) {
           setSelectedVariable(Object.keys(data.variables)[0]);
         }
       } catch (e) {
@@ -55,15 +56,15 @@ export function useOceanData() {
       }
     };
 
-    fetchInitialData();    
+    fetchInitialData();
   }, [datasetId]);
-  
-  useEffect(() => {    
+
+  useEffect(() => {
     if (!datasetId || !metadata) return;
 
     const fetchPointsData = async () => {
       setLoading(l => ({ ...l, data: true }));
-      try {        
+      try {
         const response = await fetch(`${API_BASE_URL}/points/${datasetId}/${timeIndex}/${depthIndex}`);
         if (!response.ok) throw new Error(`Data fetch failed: ${response.status}`);
         const data = await response.json();
@@ -75,9 +76,9 @@ export function useOceanData() {
       }
     };
 
-    fetchPointsData();    
+    fetchPointsData();
   }, [metadata, timeIndex, depthIndex, datasetId]);
-  
+
   useEffect(() => {
     if (!isPlaying || loading.data || !metadata) return;
     const timer = setTimeout(() => {
