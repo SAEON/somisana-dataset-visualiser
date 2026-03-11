@@ -5,7 +5,7 @@ import { Paper, Typography, Box, Slider, IconButton } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 
-import { TIME_STEP_INTERVAL } from '../config';
+
 
 export default function TimeSlider({ metadata, timeIndex, setTimeIndex, isPlaying, setIsPlaying }) {
   const [localValue, setLocalValue] = useState(timeIndex);
@@ -63,7 +63,7 @@ export default function TimeSlider({ metadata, timeIndex, setTimeIndex, isPlayin
           value={localValue}
           min={0}
           max={metadata.time_steps - 1}
-          step={TIME_STEP_INTERVAL}
+          step={1}
           onChange={handleSliderChange}
           sx={{ flex: 1, width: '60vw' }}
           valueLabelDisplay="auto"

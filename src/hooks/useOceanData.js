@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-import { API_BASE_URL, TIME_STEP_INTERVAL, ANIMATION_SPEED_MS } from '../config';
+import { API_BASE_URL, ANIMATION_SPEED_MS } from '../config';
 
 export function useOceanData() {
   const [metadata, setMetadata] = useState(null);
@@ -144,7 +144,7 @@ export function useOceanData() {
   useEffect(() => {
     if (!isPlaying || loading.data || !metadata) return;
     const timer = setTimeout(() => {
-      setTimeIndex(currentTimeIndex => (currentTimeIndex + TIME_STEP_INTERVAL) % metadata.time_steps);
+      setTimeIndex(currentTimeIndex => (currentTimeIndex + 1) % metadata.time_steps);
     }, ANIMATION_SPEED_MS);
     return () => clearTimeout(timer);
   }, [isPlaying, loading.data, timeIndex, metadata]);
