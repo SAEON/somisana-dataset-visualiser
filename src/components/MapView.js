@@ -51,9 +51,34 @@ export default function MapView({
     });
     visibleLayers.push(landMaskingLayer);
 
+    // Filter points based on the selected variable to avoid interpolating over NaN/bathymetry
+    const validIndices = [];
+    if (selectedVariable === 'currents') {
+      const u = pointsData.u;
+      const v = pointsData.v;
+      if (u && v) {
+        for (let i = 0; i < u.length; i++) {
+          if (u[i] !== null && u[i] !== undefined && v[i] !== null && v[i] !== undefined) {
+            validIndices.push(i);
+          }
+        }
+      }
+    } else {
+      const vals = pointsData[selectedVariable];
+      if (vals) {
+        for (let i = 0; i < vals.length; i++) {
+          if (vals[i] !== null && vals[i] !== undefined) {
+            validIndices.push(i);
+          }
+        }
+      } else {
+         console.warn(`Variable ${selectedVariable} not found in this depth index`);
+      }
+    }
+
     // Helper to reconstruct object for InfoBox
     const getPointObject = (index) => {
-      if (index === -1) return null;
+      if (index === -1 || index === undefined) return null;
       const props = {};
       Object.keys(pointsData).forEach(key => {
         if (key !== 'lons' && key !== 'lats') {
@@ -73,44 +98,34 @@ export default function MapView({
 
       const arrowLayer = new IconLayer({
         id: 'arrow-layer',
-        data: {
-          length: pointsData.lons.length,
-          lons: pointsData.lons,
-          lats: pointsData.lats,
-          u: pointsData.u,
-          v: pointsData.v
-        },
+        data: validIndices,
         iconAtlas: ICON_ATLAS,
         iconMapping: ICON_MAPPING,
         getIcon: d => 'arrow',
-        getPosition: (_, { index, data }) => [data.lons[index], data.lats[index]],
-        getSize: (_, { index, data }) => {
-          const u = data.u[index];
-          const v = data.v[index];
-          if (u === undefined || v === undefined) return 0;
+        getPosition: d => [pointsData.lons[d], pointsData.lats[d]],
+        getSize: d => {
+          const u = pointsData.u[d];
+          const v = pointsData.v[d];
           const magnitude = Math.sqrt(u * u + v * v);
           return 1000 + magnitude * 5000;
         },
-        getColor: (_, { index, data }) => {
-          const u = data.u[index];
-          const v = data.v[index];
-          if (u === undefined || v === undefined) return [0, 0, 0, 0];
+        getColor: d => {
+          const u = pointsData.u[d];
+          const v = pointsData.v[d];
           const magnitude = Math.sqrt(u * u + v * v);
           return getColorFromColormap(magnitude, vminMag, vmaxMag, colors);
         },
-        getAngle: (_, { index, data }) => {
-          const u = data.u[index];
-          const v = data.v[index];
-          if (u === undefined || v === undefined) return 0;
-          const angle = -(Math.atan2(u, v) * (180 / Math.PI));
-          return angle;
+        getAngle: d => {
+          const u = pointsData.u[d];
+          const v = pointsData.v[d];
+          return -(Math.atan2(u, v) * (180 / Math.PI));
         },
         pickable: true,
         autoHighlight: true,
         highlightColor: [255, 255, 0, 255],
         onClick: info => {
-          if (info.index !== -1) {
-            setClickInfo({ ...info, object: getPointObject(info.index) });
+          if (info.object !== undefined) {
+            setClickInfo({ ...info, object: getPointObject(info.object) });
           } else {
             setClickInfo(null);
           }
@@ -131,12 +146,8 @@ export default function MapView({
     } else {
       const scatterplotLayer = new ScatterplotLayer({
         id: 'scatterplot-layer',
-        data: {
-          length: pointsData.lons.length,
-          lons: pointsData.lons,
-          lats: pointsData.lats
-        },
-        getPosition: (_, { index, data }) => [data.lons[index], data.lats[index]],
+        data: validIndices,
+        getPosition: d => [pointsData.lons[d], pointsData.lats[d]],
         getFillColor: d => [200, 200, 200, 150],
         getRadius: 300,
         radiusMinPixels: 0,
@@ -145,8 +156,8 @@ export default function MapView({
         autoHighlight: true,
         highlightColor: [255, 255, 0, 200],
         onClick: info => {
-          if (info.index !== -1) {
-            setClickInfo({ ...info, object: getPointObject(info.index) });
+          if (info.object !== undefined) {
+            setClickInfo({ ...info, object: getPointObject(info.object) });
           } else {
             setClickInfo(null);
           }
@@ -158,20 +169,15 @@ export default function MapView({
 
       const contourLayer = new ContourLayer({
         id: 'contour-layer',
-        data: {
-          length: pointsData.lons.length,
-          lons: pointsData.lons,
-          lats: pointsData.lats,
-          values: pointsData[selectedVariable]
-        },
+        data: validIndices,
         contours: generateContours(
           currentVarDepthConfig.vmin,
           currentVarDepthConfig.vmax,
           MATPLOTLIB_COLORMAPS[currentVarDepthConfig.colormap]
         ),
         cellSize: 4000,
-        getPosition: (_, { index, data }) => [data.lons[index], data.lats[index]],
-        getWeight: (_, { index, data }) => data.values ? data.values[index] : 0,
+        getPosition: d => [pointsData.lons[d], pointsData.lats[d]],
+        getWeight: d => pointsData[selectedVariable][d],
         pickable: false,
         aggregation: 'MIN',
         maskId: 'land-mask-layer',
