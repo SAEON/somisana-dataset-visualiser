@@ -1,9 +1,15 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Paper, Typography, Slider } from '@mui/material';
 
 export default function DepthSlider({ metadata, depthIndex, setDepthIndex }) {
+  const [localValue, setLocalValue] = useState(metadata.depth_levels.length - 1 - depthIndex);
+
+  useEffect(() => {
+    setLocalValue(metadata.depth_levels.length - 1 - depthIndex);
+  }, [depthIndex, metadata.depth_levels.length]);
+
   const depthMarks = useMemo(() => {
     if (!metadata?.depth_levels) return [];
     const numLevels = metadata.depth_levels.length;
@@ -15,6 +21,14 @@ export default function DepthSlider({ metadata, depthIndex, setDepthIndex }) {
       }))
       .filter((_, index) => index % interval === 0 || index === numLevels - 1);
   }, [metadata]);
+
+  const handleSliderChange = (e, val) => {
+    setLocalValue(val);
+    const timer = setTimeout(() => {
+      setDepthIndex(metadata.depth_levels.length - 1 - val);
+    }, 50);
+    return () => clearTimeout(timer);
+  };
 
   return (
     <Paper
@@ -28,10 +42,10 @@ export default function DepthSlider({ metadata, depthIndex, setDepthIndex }) {
       <Slider
         orientation="vertical"
         size='small'
-        value={metadata.depth_levels.length - 1 - depthIndex}
+        value={localValue}
         min={0}
         max={metadata.depth_levels.length - 1}
-        onChange={(e, val) => setDepthIndex(metadata.depth_levels.length - 1 - val)}
+        onChange={handleSliderChange}
         sx={{ fontSize: '0.5rem', flexGrow: 1 }}
         marks={depthMarks}
       />
