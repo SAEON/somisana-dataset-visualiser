@@ -13,6 +13,7 @@ export function useOceanData() {
   const [timeIndex, setTimeIndex] = useState(0);
   const [depthIndex, setDepthIndex] = useState(0);
   const [loading, setLoading] = useState({ initial: true, data: false });
+  const [streamVersion, setStreamVersion] = useState(0); // Used to trigger re-renders when streaming data arrives
   const [error, setError] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [clickInfo, setClickInfo] = useState(null);
@@ -39,10 +40,36 @@ export function useOceanData() {
       try {
         const response = await fetch(`${API_BASE_URL}/points/${datasetId}/${dIdx}`);
         if (!response.ok) throw new Error(`Data fetch failed: ${response.status}`);
-        const data = await response.json();
         
-        depthCache.current.set(cacheKey, data);
-        return data;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let partialChunk = '';
+        const dataArray = [];
+        depthCache.current.set(cacheKey, dataArray);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          partialChunk += decoder.decode(value, { stream: true });
+          const lines = partialChunk.split('\n');
+          partialChunk = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.trim()) {
+              try {
+                const stepData = JSON.parse(line);
+                dataArray.push(stepData);
+                // Trigger re-render to allow immediate display of this time-step
+                setStreamVersion(v => v + 1);
+              } catch (parseError) {
+                console.error("Error parsing NDJSON line:", parseError);
+              }
+            }
+          }
+        }
+        
+        return dataArray;
       } catch (e) {
         console.error(`Error fetching depth ${cacheKey}:`, e);
         throw e;
@@ -117,11 +144,26 @@ export function useOceanData() {
     if (!datasetId || !metadata || !gridData) return;
 
     const loadData = async () => {
+      const cacheKey = `${datasetId}-${depthIndex}`;
+      const cachedData = depthCache.current.get(cacheKey);
+
+      // If the current timeIndex is already available in the cache (even if partially loaded), use it immediately
+      if (cachedData && cachedData[timeIndex]) {
+        setPointsData({
+          ...gridData,
+          ...cachedData[timeIndex]
+        });
+        setLoading(l => ({ ...l, data: false }));
+        setError(null);
+        return;
+      }
+
       setLoading(l => ({ ...l, data: true }));
       try {
+        // This will either start a new fetch or return a pending promise
         const fullDepthData = await fetchDepthData(depthIndex);
+        
         if (fullDepthData && fullDepthData[timeIndex]) {
-          // Merge grid coords with time values
           setPointsData({
             ...gridData,
             ...fullDepthData[timeIndex]
@@ -133,12 +175,16 @@ export function useOceanData() {
       } catch (e) {
         setError(`Failed to load data for depth index ${depthIndex}: ${e.message}`);
       } finally {
-        setLoading(l => ({ ...l, data: false }));
+        // Only stop loading if we actually have the data or failed completely
+        const currentData = depthCache.current.get(cacheKey);
+        if (currentData && currentData[timeIndex]) {
+           setLoading(l => ({ ...l, data: false }));
+        }
       }
     };
 
     loadData();
-  }, [metadata, gridData, timeIndex, depthIndex, datasetId, fetchDepthData]);
+  }, [metadata, gridData, timeIndex, depthIndex, datasetId, fetchDepthData, streamVersion]);
 
   // Animation logic
   useEffect(() => {
