@@ -72,6 +72,7 @@ export function useOceanData() {
         return dataArray;
       } catch (e) {
         console.error(`Error fetching depth ${cacheKey}:`, e);
+        depthCache.current.delete(cacheKey); // Clear cache so we can retry
         throw e;
       } finally {
         pendingRequests.current.delete(cacheKey);
@@ -159,25 +160,33 @@ export function useOceanData() {
       }
 
       setLoading(l => ({ ...l, data: true }));
+
+      // If we are already fetching this depth, we don't await (which waits for the WHOLE file).
+      // Instead, we just wait for more chunks to arrive via streamVersion updates.
+      if (pendingRequests.current.has(cacheKey)) {
+        return;
+      }
+
       try {
-        // This will either start a new fetch or return a pending promise
+        // This will start a new fetch
         const fullDepthData = await fetchDepthData(depthIndex);
         
-        if (fullDepthData && fullDepthData[timeIndex]) {
-          setPointsData({
-            ...gridData,
-            ...fullDepthData[timeIndex]
-          });
-          setError(null);
-        } else if (fullDepthData && !fullDepthData[timeIndex]) {
-           setError(`Time index ${timeIndex} out of bounds for fetched data.`);
+        // Only error if the stream is finished and we STILL don't have the data
+        if (fullDepthData && !fullDepthData[timeIndex]) {
+           setError(`Time index ${timeIndex} out of bounds for fetched data (Total available: ${fullDepthData.length}).`);
+        } else {
+           setError(null);
         }
       } catch (e) {
         setError(`Failed to load data for depth index ${depthIndex}: ${e.message}`);
       } finally {
-        // Only stop loading if we actually have the data or failed completely
+        // Double check if data arrived during/after fetch
         const currentData = depthCache.current.get(cacheKey);
         if (currentData && currentData[timeIndex]) {
+           setPointsData({
+             ...gridData,
+             ...currentData[timeIndex]
+           });
            setLoading(l => ({ ...l, data: false }));
         }
       }
