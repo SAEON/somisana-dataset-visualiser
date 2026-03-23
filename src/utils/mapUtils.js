@@ -3,7 +3,7 @@ export const VARIABLES_CONFIG = {
     salt: { name: "Salinity", colormap: "viridis" },
     u: { name: "U-Velocity", colormap: "seismic" },
     v: { name: "V-Velocity", colormap: "seismic" },
-    currents: { name: "Currents", colormap: "coolwarm" },
+    currents: { name: "Currents", colormap: "custom_speed" },
     zeta: { name: "Sea Surface Height", colormap: "coolwarm" },
 };
 
@@ -26,6 +26,9 @@ export const MATPLOTLIB_COLORMAPS = {
         '#3b4cc0', '#5868c7', '#7385cf', '#8ea1d6', '#a8bddd',
         '#c1d9e4', '#dae2e8', '#f2f2f2', '#f4dcdb', '#f5c5c5',
         '#f7afaf', '#f89898', '#f98282', '#ba2f38', '#b40426'
+    ],
+    custom_speed: [
+        '#ffffff', '#0000ff', '#ffff00', '#ff0000', '#800080'
     ],
 };
 

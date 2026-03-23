@@ -15,6 +15,36 @@ const ICON_ATLAS = 'arrow.svg';
 const ICON_MAPPING = 'icon-mapping.json';
 
 
+function generateArrowSVG(magnitude) {
+  const headSize = 20; // Larger head for visibility
+  const strokeWidth = 5;
+
+  // We define a fixed "frame" for the icon so deck.gl knows how to scale it.
+  // Let's assume a max magnitude of 100 for the coordinate space.
+  const maxWidth = 120;
+  const height = 60;
+  const centerY = height / 2;
+
+  return `
+    <svg width="${maxWidth}" height="${height}" viewBox="0 0 ${maxWidth} ${height}" xmlns="http://www.w3.org/2000/svg">
+      <line 
+        x1="0" y1="${centerY}" 
+        x2="${magnitude}" y2="${centerY}" 
+        stroke="white" 
+        stroke-width="${strokeWidth}" 
+        stroke-linecap="round"
+      />
+      <path 
+        d="M ${magnitude} ${centerY - headSize / 2} 
+           L ${magnitude + headSize} ${centerY} 
+           L ${magnitude} ${centerY + headSize / 2} 
+           Z" 
+        fill="white" 
+      />
+    </svg>
+  `;
+}
+
 export default function MapView({
   metadata,
   pointsData,
@@ -39,6 +69,22 @@ export default function MapView({
     };
   }, [metadata]);
 
+  const step = useMemo(() => {
+    const zl = viewState ? viewState.zoom : (initialViewState ? initialViewState.zoom : 6);
+    if (zl < 7.0) return 6;
+    if (zl < 8.0) return 4;
+    if (zl < 10.0) return 2;
+    return 1;
+  }, [viewState, initialViewState]);
+
+  const iconSize = useMemo(() => {
+    const zl = viewState ? viewState.zoom : (initialViewState ? initialViewState.zoom : 6);
+    if (zl < 7.0) return 10000;
+    if (zl < 8.0) return 5000;
+    if (zl < 10.0) return 3000;
+    return 1000;
+  }, [viewState, initialViewState]);
+
   const layers = useMemo(() => {
     if (!pointsData || !currentVarDepthConfig || !pointsData.lons) return [];
 
@@ -51,15 +97,31 @@ export default function MapView({
     });
     visibleLayers.push(landMaskingLayer);
 
-    // Filter points based on the selected variable to avoid interpolating over NaN/bathymetry
     const validIndices = [];
     if (selectedVariable === 'currents') {
       const u = pointsData.u;
       const v = pointsData.v;
-      if (u && v) {
+      const lons = pointsData.lons;
+      if (u && v && lons) {
+        // Find nx (grid width) by detecting first longitude wrap-around
+        let nx = 0;
+        if (lons.length > 1) {
+          for (let i = 1; i < lons.length; i++) {
+            if (lons[i] < lons[i - 1]) {
+              nx = i;
+              break;
+            }
+          }
+        }
+        if (nx === 0) nx = lons.length;
+
         for (let i = 0; i < u.length; i++) {
           if (u[i] !== null && u[i] !== undefined && v[i] !== null && v[i] !== undefined) {
-            validIndices.push(i);
+            const col = i % nx;
+            const row = Math.floor(i / nx);
+            if (col % step === 0 && row % step === 0) {
+              validIndices.push(i);
+            }
           }
         }
       }
@@ -72,7 +134,7 @@ export default function MapView({
           }
         }
       } else {
-         console.warn(`Variable ${selectedVariable} not found in this depth index`);
+        console.warn(`Variable ${selectedVariable} not found in this depth index`);
       }
     }
 
@@ -99,16 +161,27 @@ export default function MapView({
       const arrowLayer = new IconLayer({
         id: 'arrow-layer',
         data: validIndices,
-        iconAtlas: ICON_ATLAS,
-        iconMapping: ICON_MAPPING,
-        getIcon: d => 'arrow',
-        getPosition: d => [pointsData.lons[d], pointsData.lats[d]],
-        getSize: d => {
+        sizeUnits: "pixels",
+        // sizeMinPixels: 10,
+        // sizeMaxPixels: 20,
+        getSize: iconSize,
+        getIcon: d => {
           const u = pointsData.u[d];
           const v = pointsData.v[d];
           const magnitude = Math.sqrt(u * u + v * v);
-          return 1000 + magnitude * 5000;
+          const svgMag = Math.min(Math.round(magnitude * 100), 100);
+          const svgString = generateArrowSVG(svgMag);
+          return {
+            url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString),
+            id: `arrow-${svgMag}`,
+            width: 120,
+            height: 60,
+            anchorX: 0,
+            anchorY: 30,
+            mask: true,
+          };
         },
+        getPosition: d => [pointsData.lons[d], pointsData.lats[d]],
         getColor: d => {
           const u = pointsData.u[d];
           const v = pointsData.v[d];
@@ -118,7 +191,7 @@ export default function MapView({
         getAngle: d => {
           const u = pointsData.u[d];
           const v = pointsData.v[d];
-          return -(Math.atan2(u, v) * (180 / Math.PI));
+          return -(Math.atan2(u, v) * (180 / Math.PI)) - 90;
         },
         pickable: true,
         autoHighlight: true,
@@ -136,13 +209,13 @@ export default function MapView({
         extensions: [new MaskExtension()],
         updateTriggers: {
           getSize: [pointsData],
+          getIcon: [pointsData],
           getColor: [pointsData, vminMag, vmaxMag, colors],
           getAngle: [pointsData]
         }
       });
 
       visibleLayers.push(arrowLayer);
-
     } else {
       const scatterplotLayer = new ScatterplotLayer({
         id: 'scatterplot-layer',
@@ -195,7 +268,7 @@ export default function MapView({
 
     return visibleLayers;
 
-  }, [pointsData, selectedVariable, setClickInfo, currentVarDepthConfig]);
+  }, [pointsData, selectedVariable, setClickInfo, currentVarDepthConfig, step, iconSize]);
 
   if (!initialViewState) {
     return <div>Loading map data...</div>;
