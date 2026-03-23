@@ -63,6 +63,15 @@ function hexToRgb(hex) {
     return [r, g, b];
 }
 
+export function calculateDateByIndex(index, metadata) {
+    if (!metadata?.start_date || typeof metadata.step_minutes === 'undefined') return null;
+    const startDate = new Date(metadata.start_date);
+    const minutesToAdd = index * metadata.step_minutes;
+    const newDate = new Date(startDate.getTime());
+    newDate.setMinutes(newDate.getMinutes() + minutesToAdd);
+    return newDate;
+}
+
 export function getColorFromColormap(value, vmin, vmax, colors) {
     if (!colors || colors.length === 0) {
         return [255, 255, 255, 128];

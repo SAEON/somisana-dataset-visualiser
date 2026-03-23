@@ -5,28 +5,19 @@ import { Paper, Typography, Box, Slider, IconButton } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 
-
+import { calculateDateByIndex } from '../utils/mapUtils';
 
 export default function TimeSlider({ metadata, timeIndex, setTimeIndex, isPlaying, setIsPlaying }) {
   const [localValue, setLocalValue] = useState(timeIndex);
 
-  // Sync local value with parent when not playing
+  // Sync local value with parent (important for when the timeIndex changes via play timer)
   useEffect(() => {
     setLocalValue(timeIndex);
   }, [timeIndex]);
 
-  const calculateDateByIndex = (index) => {
-    if (!metadata?.start_date || typeof metadata.step_minutes === 'undefined') return null;
-    const startDate = new Date(metadata.start_date);
-    const minutesToAdd = index * metadata.step_minutes;
-    const newDate = new Date(startDate.getTime());
-    newDate.setMinutes(newDate.getMinutes() + minutesToAdd);
-    return newDate;
-  };
-
   const formattedDateTime = useMemo(() => {
     if (!metadata) return 'Loading Metadata...';
-    const date = calculateDateByIndex(localValue);
+    const date = calculateDateByIndex(localValue, metadata);
     if (!date) return "Awaiting time metadata...";
     return new Intl.DateTimeFormat('en-GB', {
       day: 'numeric', month: 'short', year: 'numeric',
@@ -68,7 +59,7 @@ export default function TimeSlider({ metadata, timeIndex, setTimeIndex, isPlayin
           sx={{ flex: 1, width: '60vw' }}
           valueLabelDisplay="auto"
           valueLabelFormat={(value) => {
-            const date = calculateDateByIndex(value);
+            const date = calculateDateByIndex(value, metadata);
             if (!date) return '';
             return new Intl.DateTimeFormat('en-GB', {
               day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC'

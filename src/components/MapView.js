@@ -147,9 +147,18 @@ export default function MapView({
           props[key] = pointsData[key][index];
         }
       });
+      if (pointsData.u && pointsData.v) {
+        const u = pointsData.u[index];
+        const v = pointsData.v[index];
+        if (u !== null && v !== null) {
+          props.currents = Math.sqrt(u * u + v * v);
+        }
+      }
+
       return {
         position: [pointsData.lons[index], pointsData.lats[index]],
-        properties: props
+        properties: props,
+        index: index
       };
     };
 

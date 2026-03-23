@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import { API_BASE_URL, ANIMATION_SPEED_MS } from '../config';
+import { calculateDateByIndex } from '../utils/mapUtils';
 
 export function useOceanData() {
   const [metadata, setMetadata] = useState(null);
@@ -204,6 +205,40 @@ export function useOceanData() {
     return () => clearTimeout(timer);
   }, [isPlaying, loading.data, timeIndex, metadata]);
 
+  const getTimeSeries = useCallback((pointIndex) => {
+    if (!datasetId || !metadata) return [];
+    const cacheKey = `${datasetId}-${depthIndex}`;
+    const cachedData = depthCache.current.get(cacheKey);
+    if (!cachedData) return [];
+
+    return cachedData.map((step, idx) => {
+      const data = {
+        timeIndex: idx,
+        date: calculateDateByIndex(idx, metadata)
+      };
+
+      // Add all variables for the point
+      Object.keys(step).forEach(key => {
+        if (Array.isArray(step[key])) {
+          data[key] = step[key][pointIndex];
+        }
+      });
+
+      // Special case for currents magnitude
+      if (step.u && step.v) {
+        const u = step.u[pointIndex];
+        const v = step.v[pointIndex];
+        if (u !== null && v !== null) {
+          data.currents = Math.sqrt(u * u + v * v);
+        } else {
+          data.currents = null;
+        }
+      }
+
+      return data;
+    });
+  }, [datasetId, depthIndex, metadata]);
+
   return {
     datasetId,
     metadata,
@@ -220,5 +255,6 @@ export function useOceanData() {
     setIsPlaying,
     clickInfo,
     setClickInfo,
+    getTimeSeries
   };
 }

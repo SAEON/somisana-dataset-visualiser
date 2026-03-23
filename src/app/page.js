@@ -38,7 +38,8 @@ function Dashboard() {
     isPlaying,
     setIsPlaying,
     clickInfo,
-    setClickInfo
+    setClickInfo,
+    getTimeSeries
   } = useOceanData();
 
   const [viewState, setViewState] = useState(null);
@@ -130,7 +131,15 @@ function Dashboard() {
         <DepthSlider metadata={metadata} depthIndex={depthIndex} setDepthIndex={setDepthIndex} />
         <TimeSlider metadata={metadata} timeIndex={timeIndex} setTimeIndex={setTimeIndex} isPlaying={isPlaying} setIsPlaying={setIsPlaying} />
         <ColourLegend variableConfig={currentVarDepthConfig} selectedVariable={selectedVariable} />
-        {clickInfo && <InfoBox clickInfo={clickInfo} onClose={() => setClickInfo(null)} variables={metadata.variables} />}
+        {clickInfo && <InfoBox 
+          clickInfo={clickInfo} 
+          onClose={() => setClickInfo(null)} 
+          variables={metadata.variables} 
+          getTimeSeries={getTimeSeries}
+          selectedVariable={selectedVariable}
+          timeIndex={timeIndex}
+          metadata={metadata}
+        />}
       </Box>
     </ThemeProvider>
   );
