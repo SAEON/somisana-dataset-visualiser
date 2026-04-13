@@ -200,7 +200,7 @@ export default function MapView({
         getAngle: d => {
           const u = pointsData.u[d];
           const v = pointsData.v[d];
-          return -(Math.atan2(u, v) * (180 / Math.PI)) - 90;
+          return (Math.atan2(v, u) * 180) / Math.PI;
         },
         pickable: true,
         autoHighlight: true,
