@@ -17,7 +17,7 @@ export default function Header() {
             }}
         >
             <Image
-                src="/saeon-logo.png"
+                src="/ocean_model_viewer/saeon-logo.png"
                 alt="Ocean Viewer Logo"
                 height={50}
                 width={100}
@@ -25,7 +25,7 @@ export default function Header() {
                 unoptimized
             />
             <Image
-                src="/somisana-logo.png"
+                src="/ocean_model_viewer/somisana-logo.png"
                 alt="Ocean Viewer Logo"
                 height={50}
                 width={70}
