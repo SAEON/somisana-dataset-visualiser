@@ -1,4 +1,4 @@
-import {Box, LinearProgress} from "@mui/material";
+import { Box, LinearProgress } from "@mui/material";
 import Image from "next/image";
 import Typography from "@mui/material/Typography";
 import React from "react";
@@ -22,6 +22,7 @@ export default function Header() {
                 height={50}
                 width={100}
                 priority
+                unoptimized
             />
             <Image
                 src="/somisana-logo.png"
@@ -29,10 +30,11 @@ export default function Header() {
                 height={50}
                 width={70}
                 priority
+                unoptimized
             />
-            <Typography variant="h4" component="h1" sx={{color: '#e2e8f0'}}>
+            <Typography variant="h4" component="h1" sx={{ color: '#e2e8f0' }}>
                 Ocean Data Viewer
-            </Typography>            
+            </Typography>
         </Box>
     )
 }
