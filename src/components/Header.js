@@ -73,7 +73,7 @@ export default function Header({ allMetadata, datasetId }) {
 
                 <Button
                     variant="outlined"
-                    onClick={() => router.push('/')}
+                    onClick={() => router.push('/ocean_model_viewer/')}
                     sx={{
                         color: '#e2e8f0',
                         ml: 2,
