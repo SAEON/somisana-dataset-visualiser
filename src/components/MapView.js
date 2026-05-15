@@ -16,11 +16,9 @@ const ICON_MAPPING = 'icon-mapping.json';
 
 
 function generateArrowSVG(magnitude) {
-  const headSize = 20; // Larger head for visibility
+  const headSize = 20;
   const strokeWidth = 5;
 
-  // We define a fixed "frame" for the icon so deck.gl knows how to scale it.
-  // Let's assume a max magnitude of 100 for the coordinate space.
   const maxWidth = 120;
   const height = 60;
   const centerY = height / 2;
@@ -54,10 +52,23 @@ export default function MapView({
   setClickInfo,
   viewState,
   setViewState,
-  currentVarDepthConfig
+  currentVarDepthConfig,
+  isHome,
+  allMetadata,
+  groupedMetadata,
+  onBoxClick
 }) {
 
   const initialViewState = useMemo(() => {
+    if (isHome) {
+      return {
+        longitude: 25,
+        latitude: -30,
+        zoom: 4,
+        pitch: 0,
+        bearing: 0,
+      };
+    }
     if (!metadata?.bounds) return null;
     const [minLon, minLat, maxLon, maxLat] = metadata.bounds;
     return {
@@ -67,7 +78,7 @@ export default function MapView({
       pitch: 0,
       bearing: 0,
     };
-  }, [metadata]);
+  }, [metadata, isHome]);
 
   const step = useMemo(() => {
     const zl = viewState ? viewState.zoom : (initialViewState ? initialViewState.zoom : 6);
@@ -86,8 +97,6 @@ export default function MapView({
   }, [viewState, initialViewState]);
 
   const layers = useMemo(() => {
-    if (!pointsData || !currentVarDepthConfig || !pointsData.lons) return [];
-
     const visibleLayers = [];
 
     const landMaskingLayer = new GeoJsonLayer({
@@ -97,13 +106,56 @@ export default function MapView({
     });
     visibleLayers.push(landMaskingLayer);
 
+    if (isHome && groupedMetadata) {
+      const boxFeatures = Object.entries(groupedMetadata).map(([key, group]) => {
+        const [minLon, minLat, maxLon, maxLat] = group.bounds;
+        return {
+          type: 'Feature',
+          properties: { datasets: group.datasets },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[
+              [minLon, minLat],
+              [maxLon, minLat],
+              [maxLon, maxLat],
+              [minLon, maxLat],
+              [minLon, minLat]
+            ]]
+          }
+        };
+      });
+
+      const boundsLayer = new GeoJsonLayer({
+        id: 'bounds-layer',
+        data: { type: 'FeatureCollection', features: boxFeatures },
+        getFillColor: [5, 15, 50, 180],
+        getLineColor: [15, 45, 100, 255],
+        getLineWidth: 2,
+        lineWidthUnits: 'pixels',
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: [144, 202, 249, 200],
+        onClick: info => {
+          if (info.object && onBoxClick) {
+            onBoxClick(info.object.properties.datasets);
+          }
+        },
+        maskId: 'land-mask-layer',
+        maskInverted: true,
+        extensions: [new MaskExtension()]
+      });
+      visibleLayers.push(boundsLayer);
+      return visibleLayers;
+    }
+
+    if (!pointsData || !currentVarDepthConfig || !pointsData.lons) return visibleLayers;
+
     const validIndices = [];
     if (selectedVariable === 'currents') {
       const u = pointsData.u;
       const v = pointsData.v;
       const lons = pointsData.lons;
       if (u && v && lons) {
-        // Find nx (grid width) by detecting first longitude wrap-around
         let nx = 0;
         if (lons.length > 1) {
           for (let i = 1; i < lons.length; i++) {
@@ -113,6 +165,7 @@ export default function MapView({
             }
           }
         }
+
         if (nx === 0) nx = lons.length;
 
         for (let i = 0; i < u.length; i++) {
@@ -138,7 +191,6 @@ export default function MapView({
       }
     }
 
-    // Helper to reconstruct object for InfoBox
     const getPointObject = (index) => {
       if (index === -1 || index === undefined) return null;
       const props = {};
@@ -277,7 +329,7 @@ export default function MapView({
 
     return visibleLayers;
 
-  }, [pointsData, selectedVariable, setClickInfo, currentVarDepthConfig, step, iconSize]);
+  }, [pointsData, selectedVariable, setClickInfo, currentVarDepthConfig, step, iconSize, isHome, allMetadata, groupedMetadata, onBoxClick]);
 
   if (!initialViewState) {
     return <div>Loading map data...</div>;

@@ -13,6 +13,7 @@ import TimeSlider from '../components/TimeSlider';
 import ColourLegend from '../components/ColourLegend';
 import InfoBox from '../components/InfoBox';
 import Header from '../components/Header';
+import HomeView from '../components/HomeView';
 
 const MapView = dynamic(() => import('../components/MapView'), {
   ssr: false,
@@ -22,8 +23,10 @@ const darkTheme = createTheme({
   palette: { mode: 'dark', primary: { main: '#90caf9' }, background: { paper: 'rgba(30, 41, 59, 0.9)' } },
 });
 
-function Dashboard() {
+function Dashboard({ oceanData }) {
   const {
+    datasetId,
+    allMetadata,
     metadata,
     pointsData,
     gridData,
@@ -40,7 +43,7 @@ function Dashboard() {
     clickInfo,
     setClickInfo,
     getTimeSeries
-  } = useOceanData();
+  } = oceanData;
 
   const [viewState, setViewState] = useState(null);
 
@@ -111,7 +114,7 @@ function Dashboard() {
   return (
     <ThemeProvider theme={darkTheme}>
       <Box sx={{ position: 'fixed', top: 0, zIndex: 1500, width: '100vw' }}>
-        <Header />
+        <Header allMetadata={allMetadata} datasetId={datasetId} />
         {(loading.data || !viewState) && <LinearProgress />}
       </Box>
       <Box sx={{ height: '100vh', width: '100vw', position: 'relative' }}>
@@ -145,15 +148,39 @@ function Dashboard() {
   );
 }
 
+function MainContent() {
+  const oceanData = useOceanData();
+  const { datasetId, allMetadata, loading, error } = oceanData;
+
+  if (loading.initial) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: '#111827', color: 'white' }}>
+        <LinearProgress sx={{ width: '200px', mb: 2 }} />
+        <Typography>Loading...</Typography>
+      </Box>
+    );
+  }
+
+  if (error && !allMetadata) {
+    return <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: 'darkred', color: 'white', p: 4 }}>{error}</Box>;
+  }
+
+  if (datasetId) {
+    return <Dashboard oceanData={oceanData} />;
+  }
+
+  return <HomeView allMetadata={allMetadata} />;
+}
+
 export default function HomePage() {
   return (
     <Suspense fallback={
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: '#111827', color: 'white' }}>
         <LinearProgress sx={{ width: '200px', mb: 2 }} />
-        <Typography>Loading Dashboard...</Typography>
+        <Typography>Initialising...</Typography>
       </Box>
     }>
-      <Dashboard />
+      <MainContent />
     </Suspense>
   );
 }

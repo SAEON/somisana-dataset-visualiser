@@ -1,21 +1,21 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { 
-    Paper, 
-    Typography, 
-    Box, 
-    RadioGroup, 
-    FormControlLabel, 
-    Radio, 
-    FormControl 
+import {
+  Paper,
+  Typography,
+  Box,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  FormControl
 } from '@mui/material';
 
-export default function LayerSelector({ metadata, selectedVariable, setSelectedVariable }) {  
+export default function LayerSelector({ metadata, selectedVariable, setSelectedVariable }) {
   const displayVariables = useMemo(() => {
     if (!metadata?.variables) return [];
 
-    const variables = [      
+    const variables = [
       { key: 'currents', name: 'Currents' }
     ];
 
@@ -38,7 +38,7 @@ export default function LayerSelector({ metadata, selectedVariable, setSelectedV
   return (
     <Paper elevation={4} sx={{ position: 'absolute', top: 110, left: 16, p: 2, width: 'max-content' }}>
       <Typography variant="h6" component="h1" id="layer-select-label" sx={{ mb: 1 }}>
-        Layer Select
+        Layers
       </Typography>
       <Box>
         <FormControl component="fieldset">

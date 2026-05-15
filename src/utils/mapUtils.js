@@ -63,6 +63,14 @@ function hexToRgb(hex) {
     return [r, g, b];
 }
 
+export function beautifyModelName(name) {
+    if (!name) return "Somisana Dataset Visualiser";
+    return name
+        .split('_')
+        .map(word => word.toLowerCase() === 'sa' ? 'SA' : word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
 export function calculateDateByIndex(index, metadata) {
     if (!metadata?.start_date || typeof metadata.step_minutes === 'undefined') return null;
     const startDate = new Date(metadata.start_date);

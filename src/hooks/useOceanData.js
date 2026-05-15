@@ -7,6 +7,7 @@ import { API_BASE_URL, ANIMATION_SPEED_MS } from '../config';
 import { calculateDateByIndex } from '../utils/mapUtils';
 
 export function useOceanData() {
+  const [allMetadata, setAllMetadata] = useState(null);
   const [metadata, setMetadata] = useState(null);
   const [gridData, setGridData] = useState(null);
   const [pointsData, setPointsData] = useState(null);
@@ -86,15 +87,8 @@ export function useOceanData() {
 
   // Initial metadata and grid fetch
   useEffect(() => {
-    if (!datasetId) {
-      setLoading({ initial: false, data: false });
-      setError("No dataset specified. Please add '?dataset_id=<name>' to the URL.");
-      setMetadata(null);
-      setGridData(null);
-      return;
-    }
-
     const fetchInitialData = async () => {
+      setAllMetadata(null);
       setMetadata(null);
       setGridData(null);
       setPointsData(null);
@@ -105,34 +99,33 @@ export function useOceanData() {
       setLoading({ initial: true, data: false });
 
       try {
-        const [metaResponse, gridResponse] = await Promise.all([
-          fetch(`${API_BASE_URL}/metadata/${datasetId}`),
-          fetch(`${API_BASE_URL}/grid/${datasetId}`)
-        ]);
-
+        const metaResponse = await fetch(`${API_BASE_URL}/metadata`);
         if (!metaResponse.ok) {
-          if (metaResponse.status === 404) {
-            throw new Error(`Dataset '${datasetId}' not found on the server.`);
-          }
           throw new Error(`HTTP error fetching metadata! Status: ${metaResponse.status}`);
         }
-        if (!gridResponse.ok) {
-           throw new Error(`HTTP error fetching grid data! Status: ${gridResponse.status}`);
-        }
+        const allData = await metaResponse.json();
+        setAllMetadata(allData);
 
-        const data = await metaResponse.json();
-        const grid = await gridResponse.json();
+        if (datasetId) {
+          const gridResponse = await fetch(`${API_BASE_URL}/grid/${datasetId}`);
+          if (!gridResponse.ok) {
+            throw new Error(`HTTP error fetching grid data for '${datasetId}'! Status: ${gridResponse.status}`);
+          }
+          const grid = await gridResponse.json();
+          setGridData(grid);
 
-        // Handle case where API might return a map of datasets
-        const datasetMetadata = data[datasetId] || data;
-        setMetadata(datasetMetadata);
-        setGridData(grid);
+          const datasetMetadata = allData[datasetId];
+          if (!datasetMetadata) {
+            throw new Error(`Dataset '${datasetId}' not found in metadata.`);
+          }
+          setMetadata(datasetMetadata);
 
-        if (datasetMetadata && datasetMetadata.variables) {
-          setSelectedVariable(Object.keys(datasetMetadata.variables)[0]);
+          if (datasetMetadata && datasetMetadata.variables) {
+            setSelectedVariable(Object.keys(datasetMetadata.variables)[0]);
+          }
         }
       } catch (e) {
-        setError(e.message || `Failed to fetch data for '${datasetId}'. Is the server at ${API_BASE_URL} running?`);
+        setError(e.message || `Failed to fetch data. Is the server at ${API_BASE_URL} running?`);
       } finally {
         setLoading(l => ({ ...l, initial: false }));
       }
@@ -241,6 +234,7 @@ export function useOceanData() {
 
   return {
     datasetId,
+    allMetadata,
     metadata,
     pointsData,
     selectedVariable,
