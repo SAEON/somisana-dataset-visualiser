@@ -1,7 +1,7 @@
 import { Box, Button, Menu, MenuItem, Typography } from "@mui/material";
 import Image from "next/image";
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { beautifyModelName } from "../utils/mapUtils";
 
@@ -9,6 +9,7 @@ export default function Header({ allMetadata, datasetId }) {
     const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     const handleClick = (event) => {
         if (anchorEl) {
@@ -22,7 +23,9 @@ export default function Header({ allMetadata, datasetId }) {
     };
 
     const handleModelSelect = (id) => {
-        router.push(`?dataset_id=${id}`);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('dataset_id', id);
+        router.push(`?${params.toString()}`);
         handleClose();
     };
 
@@ -73,7 +76,7 @@ export default function Header({ allMetadata, datasetId }) {
 
                 <Button
                     variant="outlined"
-                    onClick={() => router.push('?home')}
+                    onClick={() => router.push('/')}
                     sx={{
                         color: '#e2e8f0',
                         ml: 2,
