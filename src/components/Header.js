@@ -118,11 +118,20 @@ export default function Header({ allMetadata, datasetId }) {
                     anchorEl={anchorEl}
                     open={open}
                     onClose={handleClose}
+                    anchorOrigin={{
+                        vertical: 'bottom',
+                        horizontal: 'right',
+                    }}
+                    transformOrigin={{
+                        vertical: 'top',
+                        horizontal: 'right',
+                    }}
                     MenuListProps={{
                         'aria-labelledby': 'model-select-button',
                     }}
                     PaperProps={{
                         sx: {
+                            marginTop: '16px',
                             backgroundColor: '#1a202c !important', // Force solid background
                             backgroundImage: 'none !important',
                             opacity: '1 !important',
