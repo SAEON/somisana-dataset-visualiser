@@ -26,7 +26,8 @@ const darkTheme = createTheme({
 function Dashboard({ oceanData }) {
   const {
     datasetId,
-    allMetadata,
+    productTitle,
+    products,
     metadata,
     pointsData,
     gridData,
@@ -114,7 +115,7 @@ function Dashboard({ oceanData }) {
   return (
     <ThemeProvider theme={darkTheme}>
       <Box sx={{ position: 'fixed', top: 0, zIndex: 1500, width: '100vw' }}>
-        <Header allMetadata={allMetadata} datasetId={datasetId} />
+        <Header products={products} datasetId={datasetId} productTitle={productTitle} />
         {(loading.data || !viewState) && <LinearProgress />}
       </Box>
       <Box sx={{ height: '100vh', width: '100vw', position: 'relative' }}>
@@ -150,7 +151,7 @@ function Dashboard({ oceanData }) {
 
 function MainContent() {
   const oceanData = useOceanData();
-  const { datasetId, allMetadata, loading, error } = oceanData;
+  const { datasetId, products, loading, error } = oceanData;
 
   if (loading.initial) {
     return (
@@ -161,7 +162,7 @@ function MainContent() {
     );
   }
 
-  if (error && !allMetadata) {
+  if (error && !products) {
     return <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: 'darkred', color: 'white', p: 4 }}>{error}</Box>;
   }
 
@@ -169,7 +170,7 @@ function MainContent() {
     return <Dashboard oceanData={oceanData} />;
   }
 
-  return <HomeView allMetadata={allMetadata} />;
+  return <HomeView products={products} />;
 }
 
 export default function HomePage() {

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useMemo } from 'react';
 import { DeckGL } from '@deck.gl/react';
 import { ContourLayer } from '@deck.gl/aggregation-layers';
@@ -13,7 +13,6 @@ import landPolygon from '../app/sa_province_outline.json';
 
 const ICON_ATLAS = 'arrow.svg';
 const ICON_MAPPING = 'icon-mapping.json';
-
 
 function generateArrowSVG(magnitude) {
   const headSize = 20;
@@ -55,7 +54,7 @@ export default function MapView({
   currentVarDepthConfig,
   isHome,
   allMetadata,
-  groupedMetadata,
+  products,
   onBoxClick
 }) {
 
@@ -70,7 +69,10 @@ export default function MapView({
       };
     }
     if (!metadata?.bounds) return null;
-    const [minLon, minLat, maxLon, maxLat] = metadata.bounds;
+    const minLat = Math.min(metadata.bounds[0], metadata.bounds[1]);
+    const maxLat = Math.max(metadata.bounds[0], metadata.bounds[1]);
+    const minLon = Math.min(metadata.bounds[2], metadata.bounds[3]);
+    const maxLon = Math.max(metadata.bounds[2], metadata.bounds[3]);
     return {
       longitude: (minLon + maxLon) / 2,
       latitude: (minLat + maxLat) / 2,
@@ -96,6 +98,76 @@ export default function MapView({
     return 1000;
   }, [viewState, initialViewState]);
 
+  const getPointObject = useCallback((index) => {
+    if (index === -1 || index === undefined || !pointsData) return null;
+    const props = {};
+    Object.keys(pointsData).forEach(key => {
+      if (key !== 'lons' && key !== 'lats') {
+        props[key] = pointsData[key][index];
+      }
+    });
+    if (pointsData.u && pointsData.v) {
+      const u = pointsData.u[index];
+      const v = pointsData.v[index];
+      if (u !== null && v !== null) {
+        props.currents = Math.sqrt(u * u + v * v);
+      }
+    }
+
+    return {
+      position: [pointsData.lons[index], pointsData.lats[index]],
+      properties: props,
+      index: index
+    };
+  }, [pointsData]);
+
+  const handleMapClick = useCallback((info) => {
+    if (isHome || !pointsData || !pointsData.lons || !pointsData.lats || !info.coordinate) {
+      // Allow bounds layer click to be handled by DeckGL's layer-specific onClick if isHome
+      if (isHome) return;
+      setClickInfo(null);
+      return;
+    }
+
+    const clickedLon = info.coordinate[0];
+    const clickedLat = info.coordinate[1];
+
+    let closestIndex = -1;
+    let minDistanceSq = Infinity;
+
+    for (let i = 0; i < pointsData.lons.length; i++) {
+      const lon = pointsData.lons[i];
+      const lat = pointsData.lats[i];
+      if (lon === undefined || lat === undefined) continue;
+
+      // Only snap to valid points for the selected variable
+      if (selectedVariable === 'currents') {
+         if (pointsData.u?.[i] === null || pointsData.u?.[i] === undefined) continue;
+         if (pointsData.v?.[i] === null || pointsData.v?.[i] === undefined) continue;
+      } else {
+         if (pointsData[selectedVariable]?.[i] === null || pointsData[selectedVariable]?.[i] === undefined) continue;
+      }
+
+      const dSq = (lon - clickedLon) ** 2 + (lat - clickedLat) ** 2;
+      if (dSq < minDistanceSq) {
+        minDistanceSq = dSq;
+        closestIndex = i;
+      }
+    }
+
+    if (closestIndex !== -1) {
+      setClickInfo({
+        object: getPointObject(closestIndex),
+        x: info.x,
+        y: info.y,
+        coordinate: info.coordinate
+      });
+    } else {
+      setClickInfo(null);
+    }
+  }, [isHome, pointsData, selectedVariable, getPointObject, setClickInfo]);
+
+
   const layers = useMemo(() => {
     const visibleLayers = [];
 
@@ -106,12 +178,21 @@ export default function MapView({
     });
     visibleLayers.push(landMaskingLayer);
 
-    if (isHome && groupedMetadata) {
-      const boxFeatures = Object.entries(groupedMetadata).map(([key, group]) => {
-        const [minLon, minLat, maxLon, maxLat] = group.bounds;
+    if (isHome && products) {
+      const boxFeatures = products.map((product) => {
+        const latA = product.bounds[0];
+        const latB = product.bounds[1];
+        const lonA = product.bounds[2];
+        const lonB = product.bounds[3];
+
+        const minLat = Math.min(latA, latB);
+        const maxLat = Math.max(latA, latB);
+        const minLon = Math.min(lonA, lonB);
+        const maxLon = Math.max(lonA, lonB);
+
         return {
           type: 'Feature',
-          properties: { datasets: group.datasets },
+          properties: { product: product },
           geometry: {
             type: 'Polygon',
             coordinates: [[
@@ -137,7 +218,7 @@ export default function MapView({
         highlightColor: [144, 202, 249, 200],
         onClick: info => {
           if (info.object && onBoxClick) {
-            onBoxClick(info.object.properties.datasets);
+            onBoxClick(info.object.properties.product);
           }
         },
         maskId: 'land-mask-layer',
@@ -191,29 +272,6 @@ export default function MapView({
       }
     }
 
-    const getPointObject = (index) => {
-      if (index === -1 || index === undefined) return null;
-      const props = {};
-      Object.keys(pointsData).forEach(key => {
-        if (key !== 'lons' && key !== 'lats') {
-          props[key] = pointsData[key][index];
-        }
-      });
-      if (pointsData.u && pointsData.v) {
-        const u = pointsData.u[index];
-        const v = pointsData.v[index];
-        if (u !== null && v !== null) {
-          props.currents = Math.sqrt(u * u + v * v);
-        }
-      }
-
-      return {
-        position: [pointsData.lons[index], pointsData.lats[index]],
-        properties: props,
-        index: index
-      };
-    };
-
     if (selectedVariable === 'currents') {
       const colors = MATPLOTLIB_COLORMAPS[currentVarDepthConfig.colormap];
       const vminMag = 0;
@@ -223,8 +281,6 @@ export default function MapView({
         id: 'arrow-layer',
         data: validIndices,
         sizeUnits: "pixels",
-        // sizeMinPixels: 10,
-        // sizeMaxPixels: 20,
         getSize: iconSize,
         getIcon: d => {
           const u = pointsData.u[d];
@@ -257,13 +313,6 @@ export default function MapView({
         pickable: true,
         autoHighlight: true,
         highlightColor: [255, 255, 0, 255],
-        onClick: info => {
-          if (info.object !== undefined) {
-            setClickInfo({ ...info, object: getPointObject(info.object) });
-          } else {
-            setClickInfo(null);
-          }
-        },
         sizeUnits: 'meters',
         maskId: 'land-mask-layer',
         maskInverted: true,
@@ -289,13 +338,6 @@ export default function MapView({
         pickable: true,
         autoHighlight: true,
         highlightColor: [255, 255, 0, 200],
-        onClick: info => {
-          if (info.object !== undefined) {
-            setClickInfo({ ...info, object: getPointObject(info.object) });
-          } else {
-            setClickInfo(null);
-          }
-        },
         maskId: 'land-mask-layer',
         maskInverted: true,
         extensions: [new MaskExtension()]
@@ -329,7 +371,7 @@ export default function MapView({
 
     return visibleLayers;
 
-  }, [pointsData, selectedVariable, setClickInfo, currentVarDepthConfig, step, iconSize, isHome, allMetadata, groupedMetadata, onBoxClick]);
+  }, [pointsData, selectedVariable, currentVarDepthConfig, step, iconSize, isHome, allMetadata, products, onBoxClick]);
 
   if (!initialViewState) {
     return <div>Loading map data...</div>;
@@ -342,6 +384,7 @@ export default function MapView({
       onViewStateChange={({ viewState: vs }) => setViewState(vs)}
       controller={true}
       layers={layers}
+      onClick={handleMapClick}
     >
       <Map mapStyle={esriMapStyle} />
     </DeckGL>

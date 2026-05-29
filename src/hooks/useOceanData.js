@@ -7,7 +7,7 @@ import { API_BASE_URL, ANIMATION_SPEED_MS } from '../config';
 import { calculateDateByIndex } from '../utils/mapUtils';
 
 export function useOceanData() {
-  const [allMetadata, setAllMetadata] = useState(null);
+  const [products, setProducts] = useState(null);
   const [metadata, setMetadata] = useState(null);
   const [gridData, setGridData] = useState(null);
   const [pointsData, setPointsData] = useState(null);
@@ -25,9 +25,10 @@ export function useOceanData() {
 
   const searchParams = useSearchParams();
   const datasetId = searchParams.get('dataset_id');
+  const productTitle = searchParams.get('product_title');
 
   const fetchDepthData = useCallback(async (dIdx) => {
-    if (!datasetId) return null;
+    if (!datasetId || !productTitle) return null;
     const cacheKey = `${datasetId}-${dIdx}`;
 
     if (depthCache.current.has(cacheKey)) {
@@ -40,7 +41,7 @@ export function useOceanData() {
 
     const fetchPromise = (async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/points/${datasetId}/${dIdx}`);
+        const response = await fetch(`${API_BASE_URL}/points/${encodeURIComponent(productTitle)}/${encodeURIComponent(datasetId)}/${dIdx}`);
         if (!response.ok) throw new Error(`Data fetch failed: ${response.status}`);
         
         const reader = response.body.getReader();
@@ -83,12 +84,12 @@ export function useOceanData() {
 
     pendingRequests.current.set(cacheKey, fetchPromise);
     return fetchPromise;
-  }, [datasetId]);
+  }, [datasetId, productTitle]);
 
-  // Initial metadata and grid fetch
+  // Initial products and metadata fetch
   useEffect(() => {
     const fetchInitialData = async () => {
-      setAllMetadata(null);
+      setProducts(null);
       setMetadata(null);
       setGridData(null);
       setPointsData(null);
@@ -99,25 +100,26 @@ export function useOceanData() {
       setLoading({ initial: true, data: false });
 
       try {
-        const metaResponse = await fetch(`${API_BASE_URL}/metadata`);
-        if (!metaResponse.ok) {
-          throw new Error(`HTTP error fetching metadata! Status: ${metaResponse.status}`);
+        const productsResponse = await fetch(`${API_BASE_URL}/get_products`);
+        if (!productsResponse.ok) {
+          throw new Error(`HTTP error fetching products! Status: ${productsResponse.status}`);
         }
-        const allData = await metaResponse.json();
-        setAllMetadata(allData);
+        const productsList = await productsResponse.json();
+        setProducts(productsList);
 
-        if (datasetId) {
-          const gridResponse = await fetch(`${API_BASE_URL}/grid/${datasetId}`);
+        if (datasetId && productTitle) {
+          const gridResponse = await fetch(`${API_BASE_URL}/grid/${encodeURIComponent(productTitle)}/${encodeURIComponent(datasetId)}`);
           if (!gridResponse.ok) {
             throw new Error(`HTTP error fetching grid data for '${datasetId}'! Status: ${gridResponse.status}`);
           }
           const grid = await gridResponse.json();
           setGridData(grid);
 
-          const datasetMetadata = allData[datasetId];
-          if (!datasetMetadata) {
-            throw new Error(`Dataset '${datasetId}' not found in metadata.`);
+          const metaResponse = await fetch(`${API_BASE_URL}/metadata/${encodeURIComponent(productTitle)}/${encodeURIComponent(datasetId)}`);
+          if (!metaResponse.ok) {
+            throw new Error(`HTTP error fetching metadata for '${datasetId}'! Status: ${metaResponse.status}`);
           }
+          const datasetMetadata = await metaResponse.json();
           setMetadata(datasetMetadata);
 
           if (datasetMetadata && datasetMetadata.variables) {
@@ -132,11 +134,11 @@ export function useOceanData() {
     };
 
     fetchInitialData();
-  }, [datasetId]);
+  }, [datasetId, productTitle]);
 
   // Fetch current depth data and merge with grid for the specific time step
   useEffect(() => {
-    if (!datasetId || !metadata || !gridData) return;
+    if (!datasetId || !productTitle || !metadata || !gridData) return;
 
     const loadData = async () => {
       const cacheKey = `${datasetId}-${depthIndex}`;
@@ -187,7 +189,7 @@ export function useOceanData() {
     };
 
     loadData();
-  }, [metadata, gridData, timeIndex, depthIndex, datasetId, fetchDepthData, streamVersion]);
+  }, [metadata, gridData, timeIndex, depthIndex, datasetId, productTitle, fetchDepthData, streamVersion]);
 
   // Animation logic
   useEffect(() => {
@@ -199,7 +201,7 @@ export function useOceanData() {
   }, [isPlaying, loading.data, timeIndex, metadata]);
 
   const getTimeSeries = useCallback((pointIndex) => {
-    if (!datasetId || !metadata) return [];
+    if (!datasetId || !productTitle || !metadata) return [];
     const cacheKey = `${datasetId}-${depthIndex}`;
     const cachedData = depthCache.current.get(cacheKey);
     if (!cachedData) return [];
@@ -230,11 +232,12 @@ export function useOceanData() {
 
       return data;
     });
-  }, [datasetId, depthIndex, metadata]);
+  }, [datasetId, productTitle, depthIndex, metadata]);
 
   return {
     datasetId,
-    allMetadata,
+    productTitle,
+    products,
     metadata,
     pointsData,
     selectedVariable,
