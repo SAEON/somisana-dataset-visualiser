@@ -61,6 +61,12 @@ function Dashboard({ oceanData }) {
     }
   }, [metadata]);
 
+  useEffect(() => {
+    if (selectedVariable === 'zeta') {
+      setDepthIndex(0);
+    }
+  }, [selectedVariable, setDepthIndex]);
+
   const currentVarDepthConfig = useMemo(() => {
     if (!metadata || !selectedVariable) {
       return null;
@@ -132,7 +138,7 @@ function Dashboard({ oceanData }) {
           setViewState={setViewState}
         />}
         <LayerSelector metadata={metadata} selectedVariable={selectedVariable} setSelectedVariable={setSelectedVariable} />
-        <DepthSlider metadata={metadata} depthIndex={depthIndex} setDepthIndex={setDepthIndex} />
+        <DepthSlider metadata={metadata} depthIndex={depthIndex} setDepthIndex={setDepthIndex} disabled={selectedVariable === 'zeta'} />
         <TimeSlider metadata={metadata} timeIndex={timeIndex} setTimeIndex={setTimeIndex} isPlaying={isPlaying} setIsPlaying={setIsPlaying} />
         <ColourLegend variableConfig={currentVarDepthConfig} selectedVariable={selectedVariable} />
         {clickInfo && <InfoBox 

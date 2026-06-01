@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Paper, Typography, Slider } from '@mui/material';
 
-export default function DepthSlider({ metadata, depthIndex, setDepthIndex }) {
+export default function DepthSlider({ metadata, depthIndex, setDepthIndex, disabled }) {
   const [localValue, setLocalValue] = useState(metadata.depth_levels.length - 1 - depthIndex);
 
   useEffect(() => {
@@ -48,6 +48,7 @@ export default function DepthSlider({ metadata, depthIndex, setDepthIndex }) {
         onChange={handleSliderChange}
         sx={{ fontSize: '0.5rem', flexGrow: 1 }}
         marks={depthMarks}
+        disabled={disabled}
       />
     </Paper>
   );
